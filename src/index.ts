@@ -267,12 +267,12 @@ async function doBuildFromScratch(
     const envs = getInputList(Inputs.ENVS);
     const tlsVerify = core.getInput(Inputs.TLS_VERIFY) === "true";
 
-    const container = await cli.from(baseImage, tlsVerify, extraArgs);
-    const containerId = container.output.replace("\n", "");
-
     const builtImage = [];
     if (archs.length > 0) {
         for (const arch of archs) {
+            const container = await cli.from(baseImage, tlsVerify, extraArgs, arch);
+            const containerId = container.output.replace("\n", "");
+
             let tagSuffix = "";
             if (archs.length > 1) {
                 tagSuffix = `-${removeIllegalCharacters(arch)}`;
@@ -288,10 +288,13 @@ async function doBuildFromScratch(
             await cli.config(containerId, newImageConfig);
             await cli.copy(containerId, content);
             await cli.commit(containerId, `${newImage}${tagSuffix}`, useOCI);
+            await cli.rm(containerId);
             builtImage.push(`${newImage}${tagSuffix}`);
         }
     }
     else {
+        const container = await cli.from(baseImage, tlsVerify, extraArgs);
+        const containerId = container.output.replace("\n", "");
         const newImageConfig: BuildahConfigSettings = {
             entrypoint,
             port,
@@ -302,6 +305,7 @@ async function doBuildFromScratch(
         await cli.config(containerId, newImageConfig);
         await cli.copy(containerId, content);
         await cli.commit(containerId, newImage, useOCI);
+        await cli.rm(containerId);
         builtImage.push(newImage);
     }
 

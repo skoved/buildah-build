@@ -24,10 +24,11 @@ interface Buildah {
         useOCI: boolean, labels: string[], layers: string,
         extraArgs: string[], tlsVerify: boolean, arch?: string, platform?: string,
     ): Promise<CommandResult>;
-    from(baseImage: string, tlsVerify: boolean, extraArgs: string[]): Promise<CommandResult>;
+    from(baseImage: string, tlsVerify: boolean, extraArgs: string[], arch?: string): Promise<CommandResult>;
     config(container: string, setting: BuildahConfigSettings): Promise<CommandResult>;
     copy(container: string, contentToCopy: string[]): Promise<CommandResult | undefined>;
     commit(container: string, newImageName: string, useOCI: boolean): Promise<CommandResult>;
+    rm(container: string): Promise<CommandResult>;
     manifestCreate(manifest: string): Promise<void>;
     manifestAdd(manifest: string, imageName: string, tags: string[]): Promise<void>;
 }
@@ -113,8 +114,11 @@ export class BuildahCli implements Buildah {
         return this.execute(args);
     }
 
-    async from(baseImage: string, tlsVerify: boolean, extraArgs: string[]): Promise<CommandResult> {
+    async from(baseImage: string, tlsVerify: boolean, extraArgs: string[], arch?: string): Promise<CommandResult> {
         const args: string[] = [ "from" ];
+        if (arch) {
+            args.push("--arch", arch);
+        }
         args.push(`--tls-verify=${tlsVerify}`);
         if (extraArgs.length > 0) {
             args.push(...extraArgs);
@@ -186,6 +190,13 @@ export class BuildahCli implements Buildah {
             "commit", ...BuildahCli.getImageFormatOption(useOCI),
             "--squash", container, newImageName,
         ];
+        return this.execute(args);
+    }
+
+    async rm(container: string): Promise<CommandResult> {
+        core.debug("rm");
+        core.debug(container);
+        const args: string[] = [ "rm", container ];
         return this.execute(args);
     }
 
